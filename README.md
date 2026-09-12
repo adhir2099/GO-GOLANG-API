@@ -1,47 +1,46 @@
-![GO](https://img.shields.io/badge/GO-47d1ed?style=for-the-badge&logo=go&logoColor=white)
+# Go User API
 
-<h1 align="center"> 👋 GO API</h1>
+A small CRUD API built with Gorilla Mux, GORM v1, and MySQL.
 
-# GO API
-A complete GO API
+## Configuration
 
-## Backend
-<p align="left">
-  <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=go" />
-  </a>
-</p>
+The application reads its database configuration from environment variables. `DATABASE_DSN` takes precedence when set; otherwise set `DB_USER`, `DB_PASSWORD`, `DB_HOST` (defaults to `127.0.0.1:3306`), and `DB_NAME`.
 
-## Included imports
-* Gorilla mux
-* Gorm
+```powershell
+$env:DATABASE_DSN = "user:password@tcp(127.0.0.1:3306)/database?parseTime=true"
+go run .
+```
 
-## Initialize
-<details>
-  <summary>Initialize Go's API</summary>
-  <p>Get to the directory</p>
-  <p>Configure your server you want to listen, by default is in 8098</p>
-  <p>go run main.go</p>
-  <p>Open a new CMD terminal</p>
-  <p>Get to the directory and run the method you want to try</p>
-  <p>POST Method // go run addUser.go</p>
-  <p>PATCH Method // go run updateUser.go</p>
-  <p>DELETE Method // go run deleteUser.go</p>
-</details>
+Set `PORT` to use a port other than `8098`.
 
-## Contributing
+The API expects an existing `user` table with `id`, `name`, and `email` columns. It intentionally does not run migrations automatically.
 
-1. Fork it!
-2. Create your feature branch: `git checkout -b your-branch`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin your-branch`
-5. Submit a PR
+## Endpoints
 
-## Maintenance
-![Maintenance](https://img.shields.io/badge/Maintenance-Yes-brightgreen)
+| Method | Path | Body | Success response |
+| --- | --- | --- | --- |
+| `GET` | `/user/{id}` | — | `200` |
+| `POST` | `/user/new` | `{"name":"Ada","email":"ada@example.com"}` | `201` |
+| `PATCH` | `/user/update/{id}` | one or both of `name`, `email` | `200` |
+| `DELETE` | `/user/delete/{id}` | — | `204` |
 
-<h3 align="left">Get in touch with me:</h3>
-<p align="left">
-<a href="https://www.linkedin.com/in/adhir-serrano/" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/linked-in-alt.svg" alt="adhir2099" height="30" width="40" /></a>
-</p>
-<p align="right" > Created with 🧡 by <a href="https://github.com/adhir2099">Adhir2099</a></p>
+All error responses are JSON and include an appropriate HTTP status code. Request bodies must be a single JSON object; unknown fields and invalid email addresses are rejected.
+
+## Sample clients
+
+Run the server first, then execute any of these from a second terminal:
+
+```powershell
+go run ./cmd/adduser
+go run ./cmd/updateuser
+go run ./cmd/deleteuser
+```
+
+The update and delete examples use ID `1`; change it to an ID in your database as needed.
+
+## Verification
+
+```powershell
+go test ./...
+go vet ./...
+```

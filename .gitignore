@@ -1,0 +1,5 @@
+# Local environment and build artifacts
+.env
+*.exe
+*.test
+coverage.out

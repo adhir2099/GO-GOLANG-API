@@ -1,4 +1,4 @@
-module main.go
+module github.com/adhir2099/GO-GOLANG-API
 
 go 1.21.3
 

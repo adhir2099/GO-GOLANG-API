@@ -1,70 +1,102 @@
 package connect
 
 import (
-	"log"
+	"errors"
+	"fmt"
+	"os"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/adhir2099/GO-GOLANG-API/structures"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
-	"main.go/structures"
 )
 
-var connection *gorm.DB
+var db *gorm.DB
 
-const engine_sql string = "mysql"
+const engineSQL = "mysql"
 
-const userName string = ""
-const password string = ""
-const database string = ""
+var ErrNotFound = errors.New("user not found")
 
-func InitializeDB() {
-	connection = ConnectORM(DBString())
-	log.Println("Successfully connected")
-}
-
-func CloseConnection() {
-	connection.Close()
-	log.Println("Connection closed")
-}
-
-func ConnectORM(stringConnection string) *gorm.DB {
-
-	connection, err := gorm.Open(engine_sql, stringConnection)
+func InitializeDB() error {
+	connection, err := ConnectORM(DBString())
 	if err != nil {
-		log.Fatal(err)
+		return err
+	}
+	db = connection
+	return nil
+}
+
+func CloseConnection() error {
+	if db == nil {
 		return nil
 	}
-	return connection
+	return db.Close()
 }
 
-func GetUser(id string) structures.User {
-	user := structures.User{}
-	connection.Where("id = ?", id).First(&user)
-	return user
+func ConnectORM(connectionString string) (*gorm.DB, error) {
+	connection, err := gorm.Open(engineSQL, connectionString)
+	if err != nil {
+		return nil, fmt.Errorf("open database connection: %w", err)
+	}
+	return connection, nil
 }
 
-func CreateUser(user structures.User) structures.User {
-	connection.Create(&user)
-	return user
+func GetUser(id uint) (structures.User, error) {
+	var user structures.User
+	if err := db.First(&user, id).Error; err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			return structures.User{}, ErrNotFound
+		}
+		return structures.User{}, fmt.Errorf("get user: %w", err)
+	}
+	return user, nil
 }
 
-func UpdateUser(id string, user structures.User) structures.User {
-	currentUser := structures.User{}
-	connection.Where("id = ?", id).First(&currentUser)
-
-	currentUser.Name = user.Name
-	currentUser.Email = user.Email
-
-	connection.Save(&currentUser)
-
-	return currentUser
+func CreateUser(user structures.User) (structures.User, error) {
+	if err := db.Create(&user).Error; err != nil {
+		return structures.User{}, fmt.Errorf("create user: %w", err)
+	}
+	return user, nil
 }
 
-func DeleteUser(id string) {
-	user := structures.User{}
-	connection.Where("id = ?", id).First(&user)
-	connection.Delete(&user)
+func UpdateUser(id uint, updates map[string]any) (structures.User, error) {
+	user, err := GetUser(id)
+	if err != nil {
+		return structures.User{}, err
+	}
+	if err := db.Model(&user).Updates(updates).Error; err != nil {
+		return structures.User{}, fmt.Errorf("update user: %w", err)
+	}
+	return GetUser(id)
+}
+
+func DeleteUser(id uint) error {
+	user, err := GetUser(id)
+	if err != nil {
+		return err
+	}
+	if err := db.Delete(&user).Error; err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+	return nil
 }
 
 func DBString() string {
-	return userName + ":" + password + "@/" + database
+	if dsn := os.Getenv("DATABASE_DSN"); dsn != "" {
+		return dsn
+	}
+	return (&mysql.Config{
+		User:      os.Getenv("DB_USER"),
+		Passwd:    os.Getenv("DB_PASSWORD"),
+		Net:       "tcp",
+		Addr:      envOrDefault("DB_HOST", "127.0.0.1:3306"),
+		DBName:    os.Getenv("DB_NAME"),
+		ParseTime: true,
+	}).FormatDSN()
+}
+
+func envOrDefault(name, fallback string) string {
+	if value := os.Getenv(name); value != "" {
+		return value
+	}
+	return fallback
 }
